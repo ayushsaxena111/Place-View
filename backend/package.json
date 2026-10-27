@@ -1,0 +1,20 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --experimental-test-module-mocks --test --test-concurrency=1 \"tests/*.test.js\"",
+    "check-env": "node scripts/check-env.js",
+    "dev:all": "node scripts/dev-all.js"
+  },
+  "dependencies": {
+    "ioredis": "^5.11.1"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}
