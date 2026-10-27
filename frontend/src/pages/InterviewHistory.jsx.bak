@@ -1,0 +1,348 @@
+import { useEffect, useMemo, useState } from 'react'
+import { AnimatePresence, motion } from "motion/react"
+import { useNavigate } from 'react-router-dom'
+import {
+    FiChevronDown,
+    FiFileText,
+    FiSearch,
+    FiTrendingDown,
+    FiTrendingUp,
+} from 'react-icons/fi'
+import { getAllInterviews } from '../apis/interview.api'
+
+const TYPE_FILTERS = [
+    { key: "all", label: "All" },
+    { key: "technical", label: "Technical" },
+    { key: "hr", label: "HR" },
+];
+
+const scoreColor = (score) => {
+    if (score >= 75) return "text-emerald-400";
+    if (score >= 50) return "text-amber-400";
+    return "text-red-400";
+};
+
+function InterviewHistory() {
+    const navigate = useNavigate()
+
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState("")
+    const [interviews, setInterviews] = useState([])
+    const [stats, setStats] = useState(null)
+
+    const [search, setSearch] = useState("")
+    const [typeFilter, setTypeFilter] = useState("all")
+    const [expandedId, setExpandedId] = useState(null)
+
+    useEffect(() => {
+        const load = async () => {
+            const response = await getAllInterviews()
+
+            if (!response?.success) {
+                setError("Could not load your interview history. Please try again.")
+                setLoading(false)
+                return;
+            }
+
+            setInterviews(response.interviews || [])
+            setStats(response.stats || null)
+            setLoading(false)
+        }
+
+        load()
+    }, [])
+
+    const filtered = useMemo(() => {
+        const term = search.trim().toLowerCase()
+
+        return interviews.filter((item) => {
+            const matchesType =
+                typeFilter === "all" || item.type === typeFilter
+
+            const matchesSearch =
+                !term || String(item.role || "").toLowerCase().includes(term)
+
+            return matchesType && matchesSearch
+        })
+    }, [interviews, search, typeFilter])
+
+    return (
+        <div className='min-h-screen bg-white text-[#0A0A0A] flex flex-col'>
+
+            <motion.nav
+                initial={{ y: -60, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className='sticky top-0 z-20 border-b border-black/8 bg-white/80 backdrop-blur-xl'>
+                <div className='mx-auto flex h-12 max-w-7xl items-center justify-between px-3 sm:px-5'>
+                    <div onClick={() => navigate("/dashboard")}
+                        className='flex cursor-pointer items-center gap-1.5'>
+                        <span className='text-sm font-extrabold sm:text-base text-[#0A0A0A]'>FresherAI</span>
+                        <span className='hidden rounded bg-black/5 px-1.5 py-0.5 text-[10px] text-black/50 sm:block'>Interview History</span>
+                    </div>
+
+                    <button
+                        onClick={() => navigate("/interview")}
+                        className='flex h-8 items-center justify-center gap-1 rounded-lg bg-[#0A0A0A] text-white transition px-3 hover:bg-black/80 text-[11px] font-medium'>
+                        New Interview
+                    </button>
+                </div>
+            </motion.nav>
+
+            <main className='flex-1 mx-auto w-full max-w-4xl px-3 sm:px-5 py-6 sm:py-8'>
+
+                <div className='mb-6'>
+                    <h1 className='text-2xl sm:text-3xl font-bold text-[#0A0A0A]'>
+                        Interview History
+                    </h1>
+                    <p className='mt-1.5 text-sm text-black/45'>
+                        Every interview you have taken, with the feedback for each answer.
+                    </p>
+                </div>
+
+                {stats && (
+                    <div className='grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-6'>
+                        <div className='rounded-xl border border-black/8 p-3.5'>
+                            <p className='text-[11px] text-black/45'>Interviews</p>
+                            <h3 className='mt-1 text-xl font-bold'>{stats.totalInterviews}</h3>
+                        </div>
+                        <div className='rounded-xl border border-black/8 p-3.5'>
+                            <p className='text-[11px] text-black/45'>Completed</p>
+                            <h3 className='mt-1 text-xl font-bold'>{stats.completed}</h3>
+                        </div>
+                        <div className='rounded-xl border border-black/8 p-3.5'>
+                            <p className='text-[11px] text-black/45'>Questions</p>
+                            <h3 className='mt-1 text-xl font-bold'>{stats.totalQuestions}</h3>
+                        </div>
+                        <div className='rounded-xl border border-black/8 p-3.5'>
+                            <p className='text-[11px] text-black/45'>Avg Score</p>
+                            <h3 className='mt-1 text-xl font-bold'>{stats.averageScore}</h3>
+                        </div>
+                    </div>
+                )}
+
+                <div className='flex flex-col sm:flex-row gap-2.5 mb-5'>
+                    <div className='flex items-center gap-2 flex-1 rounded-xl border border-black/10 px-3'>
+                        <FiSearch size={14} className='text-black/35 shrink-0' />
+                        <input
+                            type='text'
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder='Search by role…'
+                            className='w-full bg-transparent py-2.5 text-sm outline-none placeholder-black/30' />
+                    </div>
+
+                    <div className='flex items-center gap-1.5'>
+                        {TYPE_FILTERS.map((filter) => (
+                            <button
+                                key={filter.key}
+                                onClick={() => setTypeFilter(filter.key)}
+                                className={`text-xs px-3 py-2.5 rounded-xl border transition-colors ${typeFilter === filter.key
+                                    ? "bg-[#0A0A0A] text-white border-[#0A0A0A]"
+                                    : "border-black/10 text-black/55 hover:border-black/30"
+                                    }`}>
+                                {filter.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {loading ? (
+                    <div className='py-16 flex justify-center'>
+                        <div className="w-8 h-8 rounded-full border-4 border-black/10 border-t-black animate-spin" />
+                    </div>
+                ) : error ? (
+                    <p className='py-16 text-center text-sm text-red-500'>{error}</p>
+                ) : filtered.length === 0 ? (
+                    <div className='py-16 text-center'>
+                        <FiFileText size={28} className='mx-auto text-black/20' />
+                        <p className='mt-3 text-sm text-black/45'>
+                            {interviews.length === 0
+                                ? "You haven't taken any interviews yet."
+                                : "No interviews match this filter."}
+                        </p>
+                    </div>
+                ) : (
+                    <div className='space-y-3'>
+                        {filtered.map((item) => {
+                            const expanded = expandedId === item._id
+                            const answered = item.questions?.length || 0
+
+                            return (
+                                <div key={item._id}
+                                    className='rounded-2xl border border-black/8 overflow-hidden'>
+
+                                    <button
+                                        onClick={() => setExpandedId(expanded ? null : item._id)}
+                                        className='w-full flex items-center gap-3 p-4 text-left hover:bg-black/[0.02] transition-colors'>
+
+                                        <div className='flex-1 min-w-0'>
+                                            <div className='flex items-center gap-2 flex-wrap'>
+                                                <h3 className='text-sm font-semibold truncate'>{item.role}</h3>
+                                                <span className='rounded bg-black/5 px-1.5 py-0.5 text-[10px] uppercase text-black/50'>
+                                                    {item.type}
+                                                </span>
+                                                {item.status !== "completed" && (
+                                                    <span className='rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600'>
+                                                        In progress
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className='mt-1 text-xs text-black/40'>
+                                                {new Date(item.createdAt).toLocaleDateString()} · {answered} question{answered === 1 ? "" : "s"}
+                                            </p>
+                                        </div>
+
+                                        <div className='text-right shrink-0'>
+                                            <p className={`text-xl font-bold ${scoreColor(item.overallScore || 0)}`}>
+                                                {item.overallScore || 0}
+                                            </p>
+                                            <p className='text-[10px] text-black/35'>score</p>
+                                        </div>
+
+                                        <FiChevronDown
+                                            size={16}
+                                            className={`text-black/30 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                                    </button>
+
+                                    <AnimatePresence initial={false}>
+                                        {expanded && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: "auto", opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className='overflow-hidden border-t border-black/8'>
+
+                                                <div className='p-4 space-y-4'>
+
+                                                    {item.summary && (
+                                                        <div>
+                                                            <p className='text-[11px] uppercase tracking-widest text-black/40'>
+                                                                Overall Feedback
+                                                            </p>
+                                                            <p className='mt-2 text-sm leading-6 text-black/70'>
+                                                                {item.summary}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    {(item.strengths?.length > 0 || item.weaknesses?.length > 0) && (
+                                                        <div className='grid sm:grid-cols-2 gap-3'>
+                                                            <div className='rounded-xl border border-black/8 p-3.5'>
+                                                                <p className='flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-emerald-600'>
+                                                                    <FiTrendingUp size={11} /> Strengths
+                                                                </p>
+                                                                <div className='mt-2 space-y-1'>
+                                                                    {item.strengths?.length > 0 ? (
+                                                                        item.strengths.map((point, i) => (
+                                                                            <p key={i} className='text-xs text-black/65 leading-5'>• {point}</p>
+                                                                        ))
+                                                                    ) : (
+                                                                        <p className='text-xs text-black/35'>None recorded.</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className='rounded-xl border border-black/8 p-3.5'>
+                                                                <p className='flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-amber-600'>
+                                                                    <FiTrendingDown size={11} /> Weaknesses
+                                                                </p>
+                                                                <div className='mt-2 space-y-1'>
+                                                                    {item.weaknesses?.length > 0 ? (
+                                                                        item.weaknesses.map((point, i) => (
+                                                                            <p key={i} className='text-xs text-black/65 leading-5'>• {point}</p>
+                                                                        ))
+                                                                    ) : (
+                                                                        <p className='text-xs text-black/35'>None recorded.</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div>
+                                                        <p className='text-[11px] uppercase tracking-widest text-black/40 mb-2.5'>
+                                                            Answers &amp; Feedback
+                                                        </p>
+
+                                                        <div className='space-y-2.5'>
+                                                            {item.questions?.map((q, index) => (
+                                                                <div key={index} className='rounded-xl border border-black/8 p-3.5'>
+                                                                    <div className='flex items-start justify-between gap-3'>
+                                                                        <div className='min-w-0'>
+                                                                            <div className='flex items-center gap-2 flex-wrap'>
+                                                                                <span className='text-[10px] uppercase tracking-widest text-black/35'>
+                                                                                    Q{index + 1}
+                                                                                </span>
+                                                                                <span className='rounded bg-black/5 px-1.5 py-0.5 text-[10px] capitalize text-black/50'>
+                                                                                    {q.difficulty}
+                                                                                </span>
+                                                                                {q.isFollowUp && (
+                                                                                    <span className='rounded bg-violet-500/15 px-1.5 py-0.5 text-[10px] text-violet-600'>
+                                                                                        Follow-up
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <p className='mt-1.5 text-sm font-medium leading-6'>{q.question}</p>
+                                                                        </div>
+
+                                                                        <span className={`text-sm font-bold shrink-0 ${scoreColor(q.feedback?.score || 0)}`}>
+                                                                            {q.feedback?.score ?? 0}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <p className='mt-2.5 text-xs text-black/55 leading-5'>
+                                                                        <span className='text-black/35'>Your answer: </span>
+                                                                        {q.userAnswer || "No answer submitted"}
+                                                                    </p>
+
+                                                                    <p className='mt-2 text-xs text-black/70 leading-5'>
+                                                                        <span className='text-black/35'>Feedback: </span>
+                                                                        {q.feedback?.feedback || "No feedback available."}
+                                                                    </p>
+
+                                                                    {q.feedback?.revisionAdvice?.length > 0 && (
+                                                                        <div className='mt-2.5 rounded-lg bg-blue-500/5 border border-blue-500/15 p-2.5'>
+                                                                            <p className='text-[10px] uppercase tracking-widest text-blue-600'>Revise</p>
+                                                                            {q.feedback.revisionAdvice.map((point, i) => (
+                                                                                <p key={i} className='mt-1 text-xs text-black/65 leading-5'>• {point}</p>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {item.status === "completed" && (
+                                                        <button
+                                                            onClick={() => navigate(`/interview/${item._id}/report`)}
+                                                            className='w-full rounded-xl bg-[#0A0A0A] text-white text-xs font-semibold py-2.5 hover:bg-black/85 transition-colors'>
+                                                            Open Full Report
+                                                        </button>
+                                                    )}
+
+                                                    {item.status !== "completed" && (
+                                                        <button
+                                                            onClick={() => navigate(`/interview/${item._id}`)}
+                                                            className='w-full rounded-xl border border-black/15 text-xs font-semibold py-2.5 hover:border-black/40 transition-colors'>
+                                                            Resume Interview
+                                                        </button>
+                                                    )}
+
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+            </main>
+        </div>
+    )
+}
+
+export default InterviewHistory
